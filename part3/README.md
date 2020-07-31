@@ -121,35 +121,25 @@ Image size: 1.57GB
 
 After:
 ```Dockerfile
-# build
-FROM rocker/shiny:3.5.3 as builder
-RUN apt-get update && apt-get install -y --no-install-recommends libxml2-dev && \
-    R -e "install.packages(c('wordcloud', 'tm'))"
-
-# prod
 FROM rocker/r-ver:3.5.3
-COPY --from=builder /usr/local/bin/R /usr/local/bin/R
-COPY --from=builder /usr/local/lib/R /usr/local/lib/R
-COPY --from=builder /usr/local/bin/Rscript /usr/local/bin/Rscript
-COPY --from=builder /opt/shiny-server /opt/shiny-server
-COPY --from=builder /etc/shiny-server/shiny-server.conf /etc/shiny-server/shiny-server.conf
 
 WORKDIR /srv/shiny-server/
-COPY server.R ui.R ./
 
-RUN mkdir -p /var/log/shiny-server && \
-    mkdir -p /var/lib/shiny-server && \
-    ln -s /opt/shiny-server/bin/shiny-server /usr/bin/shiny-server && \
+RUN apt-get update && apt-get install -y --no-install-recommends libxml2-dev && \
+    R -e "install.packages(c('wordcloud', 'tm', 'shiny'))" && \
+    apt-get purge -y --auto-remove libxml2-dev && \
+    rm -rf /var/lib/apt/lists/* && \
     useradd -m shiny && \
-    chown shiny:shiny /srv/shiny-server/ && \
-    chown shiny:shiny /var/log/shiny-server && \
-    chown shiny:shiny /var/lib/shiny-server
+    chown shiny:shiny /srv/shiny-server/
 
-EXPOSE 3838
+
+COPY server.R ui.R run.R ./
+ENV PORT=3838
+
 USER shiny
-CMD ["shiny-server"]
+CMD ["R", "--no-save", "--gui-none", "-f", "./run.R"]
 ```
-Image size: 1.2GB and running as non-root
+Image size: 795MB and running as non-root
 
 ### 3.8
 
